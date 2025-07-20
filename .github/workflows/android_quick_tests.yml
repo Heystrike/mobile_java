@@ -1,0 +1,85 @@
+name: Android Quick Tests
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - '.github/workflows/**'
+
+jobs:
+  quick-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Validate Maven Project
+      run: mvn validate
+      
+    - name: Compile Source Code
+      run: mvn clean compile
+      
+    - name: Compile Test Classes
+      run: mvn test-compile
+      
+    - name: Run Static Analysis (if applicable)
+      run: |
+        # Verificar se existem arquivos de configuração para análise estática
+        if [ -f "checkstyle.xml" ] || [ -f "pmd.xml" ] || [ -f "spotbugs.xml" ]; then
+          echo "Running static analysis..."
+          mvn verify -DskipTests=true
+        else
+          echo "No static analysis configuration found, skipping..."
+        fi
+        
+    - name: Validate Test Configuration
+      run: |
+        echo "Validating TestNG suites..."
+        if [ -f "src/test/resources/suites/contatos/android-contatos-suite.xml" ]; then
+          echo "✅ Android suite found"
+        else
+          echo "❌ Android suite not found"
+          exit 1
+        fi
+        
+        echo "Validating test classes..."
+        if [ -f "src/test/java/tests/android/ContatosTestAndroid.java" ]; then
+          echo "✅ Android test class found"
+        else
+          echo "❌ Android test class not found"
+          exit 1
+        fi
+        
+    - name: Check Dependencies
+      run: mvn dependency:analyze
+      
+    - name: Generate Dependency Tree
+      run: mvn dependency:tree > dependency-tree.txt
+      
+    - name: Upload Build Artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-validation-artifacts
+        path: |
+          target/classes/
+          target/test-classes/
+          dependency-tree.txt
+        retention-days: 7
