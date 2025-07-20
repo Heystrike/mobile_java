@@ -11,6 +11,7 @@ jobs:
   android-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    if: ${{ !cancelled() }}
     
     strategy:
       matrix:
@@ -29,7 +30,7 @@ jobs:
         java-version: '11'
         
     - name: Cache Maven dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -42,12 +43,12 @@ jobs:
         sudo udevadm trigger --name-match=kvm
         
     - name: Cache Android SDK
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.android/avd/*
           ~/.android/adb*
-          ${{ env.ANDROID_HOME }}
+          ~/.android/sdk
         key: ${{ runner.os }}-android-${{ matrix.api-level }}
         restore-keys: |
           ${{ runner.os }}-android-
@@ -56,6 +57,7 @@ jobs:
       uses: android-actions/setup-android@v3
       
     - name: Install Android SDK components
+      if: ${{ !cancelled() }}
       run: |
         sdkmanager "system-images;android-${{ matrix.api-level }};${{ matrix.target }};${{ matrix.arch }}"
         sdkmanager "platforms;android-${{ matrix.api-level }}"
@@ -64,10 +66,12 @@ jobs:
         sdkmanager "emulator"
         
     - name: Create AVD
+      if: ${{ !cancelled() }}
       run: |
         echo "no" | avdmanager create avd --force --name test_emulator --abi ${{ matrix.target }}/${{ matrix.arch }} --package "system-images;android-${{ matrix.api-level }};${{ matrix.target }};${{ matrix.arch }}"
         
     - name: Start Android Emulator
+      if: ${{ !cancelled() }}
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: ${{ matrix.api-level }}
@@ -88,6 +92,7 @@ jobs:
           adb shell input keyevent 82
           
     - name: Wait for emulator to be ready
+      if: ${{ !cancelled() }}
       run: |
         echo "Waiting for emulator to be ready..."
         adb wait-for-device
@@ -99,24 +104,29 @@ jobs:
         adb devices -l
         
     - name: Install Appium Server
+      if: ${{ !cancelled() }}
       run: |
         npm install -g appium@2.0.0
         appium driver install uiautomator2
         appium driver list
         
     - name: Start Appium Server
+      if: ${{ !cancelled() }}
       run: |
         appium --port 4723 --log-level info --log appium.log &
         sleep 10
         echo "Appium server started"
         
     - name: Verify Maven installation
+      if: ${{ !cancelled() }}
       run: mvn --version
       
     - name: Compile test classes
+      if: ${{ !cancelled() }}
       run: mvn clean compile test-compile
       
     - name: Run Android Tests
+      if: ${{ !cancelled() }}
       run: |
         mvn test -Pandroid \
           -Dplatform=android \
@@ -127,7 +137,7 @@ jobs:
         ANDROID_HOME: ${{ env.ANDROID_HOME }}
         
     - name: Generate Test Report
-      if: always()
+      if: ${{ !cancelled() && always() }}
       run: |
         if [ -d "target/surefire-reports" ]; then
           echo "Test reports found:"
@@ -137,8 +147,8 @@ jobs:
         fi
         
     - name: Upload Test Results
-      if: always()
-      uses: actions/upload-artifact@v3
+      if: ${{ !cancelled() && always() }}
+      uses: actions/upload-artifact@v4
       with:
         name: android-test-results-${{ matrix.api-level }}
         path: |
@@ -148,7 +158,7 @@ jobs:
         retention-days: 30
         
     - name: Upload Test Reports
-      if: always()
+      if: ${{ !cancelled() && always() }}
       uses: dorny/test-reporter@v1
       with:
         name: Android Tests Results
@@ -157,12 +167,12 @@ jobs:
         fail-on-error: false
         
     - name: Stop Appium Server
-      if: always()
+      if: ${{ !cancelled() && always() }}
       run: |
         pkill -f appium || true
         
     - name: Collect Logs
-      if: failure()
+      if: ${{ !cancelled() && failure() }}
       run: |
         echo "=== ADB Devices ==="
         adb devices -l
@@ -176,7 +186,7 @@ jobs:
   notification:
     needs: android-tests
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ !cancelled() && always() }}
     
     steps:
     - name: Test Status Notification
