@@ -1,0 +1,14 @@
+# Maven
+target/
+
+# Logs
+*.log
+logs/
+
+# Test outputs
+test-output/
+allure-results/
+
+# Appium
+node_modules/
+npm-debug.log*
