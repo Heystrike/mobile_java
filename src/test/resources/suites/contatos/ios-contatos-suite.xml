@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+
+<suite name="iOS Contacts Test Suite" verbose="1">
+    <test name="iOS Contacts Tests" preserve-order="true">
+        <parameter name="platform" value="ios"/>
+        <parameter name="module" value="contatos"/>
+        <parameter name="deviceName" value="iPhone 15"/>
+        <parameter name="platformVersion" value="17.0"/>
+        <parameter name="bundleId" value="com.apple.MobileAddressBook"/>
+        
+        <classes>
+            <class name="tests.ios.ContatosTestIOS">
+                <methods>
+                    <include name="testeAdicionarContatoIOS"/>
+                    <include name="testeCancelarAdicaoIOS"/>
+                    <include name="testePesquisarContatoIOS"/>
+                    <include name="testeExcluirContatoIOS"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+    
+    <listeners>
+        <listener class-name="org.testng.reporters.EmailableReporter"/>
+        <listener class-name="org.testng.reporters.jq.Main"/>
+    </listeners>
+</suite>
